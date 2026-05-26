@@ -71,7 +71,7 @@ with st.sidebar.expander("🔍 실시간 날씨 데이터 연동", expanded=True
     city_input = st.text_input("영문 도시명 입력 (예: Daejeon)", placeholder="Seoul")
     if st.button("날씨 데이터 불러오기"):
         if city_input:
-            # [주의] 본인의 API 키를 여기에 입력하세요
+            # 본인의 API 키를 여기에 입력하세요
             api_key = "5c55a17e72f6d32c9e75968bdd7beb19" 
             w_url = f"http://api.openweathermap.org/data/2.5/weather?q={city_input}&appid={api_key}&units=metric"
             try:
@@ -94,7 +94,7 @@ hum = st.sidebar.slider("정밀 습도 조절 (%)", 0.0, 100.0, st.session_state
 vibe = st.sidebar.slider("현재 나의 기분 (0:차분함 ↔ 100:신남)", 0.0, 100.0, 50.0, 0.1)
 
 # 5. 메인 화면 출력
-st.title("🎧 Weather Playlist v6.5")
+st.title("🎧 Weather Playlist v6.6")
 st.write("실시간 기상 데이터와 사계절 스트리밍 빅데이터를 분석하여 당신의 환경에 가장 완벽한 음악 30곡을 큐레이션합니다.")
 
 # [기능 3] 지능형 새로고침 및 분석 버튼
@@ -122,14 +122,14 @@ if st.button("🚀 나만의 플레이리스트 생성 및 새로고침"):
     # 6. 결과 출력 (카드형 UI + 더블 플랫폼 연동)
     for i, (idx, row) in enumerate(results.iterrows()):
         track, artist = row['track_name'], row['artist(s)_name']
-        query = f"{track} {artist}".replace(" ", "+")
         
         # [기능 4] 스포티파이 검색 연동 링크
         play_url = f"https://open.spotify.com/search/{track} {artist}"
         
-        # [기능 5] 유튜브 다이렉트 자동 재생 링크
-        # listType=search와 list=검색어 조합으로 첫 번째 결과를 즉시 재생
-        yt_auto_url = f"https://www.youtube.com/embed?listType=search&list={query}&autoplay=1"
+        # [기능 5] 유튜브 검색 기반 다이렉트 링크 (오류 153 방지)
+        # 검색 결과 최상단 영상으로 바로 연결되도록 쿼리 최적화
+        yt_query = f"{track} {artist} official audio".replace(" ", "+")
+        yt_url = f"https://www.youtube.com/results?search_query={yt_query}"
         
         # 곡 설명 생성 (NLG)
         mood_text = "밝고 경쾌한" if row['valence_%'] > 60 else "차분하고 서정적인"
@@ -148,7 +148,7 @@ if st.button("🚀 나만의 플레이리스트 생성 및 새로고침"):
                     <div style="width: 280px; text-align: right;">
                         <div class="btn-container">
                             <a href="{play_url}" target="_blank" class="play-btn">▶ Spotify 감상</a>
-                            <a href="{yt_auto_url}" target="_blank" class="yt-btn">📺 유튜브 자동재생</a>
+                            <a href="{yt_url}" target="_blank" class="yt-btn">📺 유튜브 바로듣기</a>
                         </div>
                         <p style="color: #b3b3b3; font-size: 11px; margin-top: 15px;">
                             BPM: {row['bpm']} | Streams: {int(row['streams']):,}
