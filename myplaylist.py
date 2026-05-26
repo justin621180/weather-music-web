@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import requests
 
-# 페이지 제목과 아이콘
-st.set_page_config(page_title="Weather Playlst", page_icon="🎧")
+# 페이지 설정
+st.set_page_config(page_title="Weather Playlist", page_icon="🎧")
 
-# 스포티파이 스타일 디자인 입히기
+# 스타일 설정
 st.markdown("""
     <style>
     .main { background-color: #121212; color: white; }
@@ -24,22 +24,48 @@ def load_data():
 
 df = load_data()
 
-# 사이드바 (설정창)
-st.sidebar.title("📍 시뮬레이터 설정")
-season = st.sidebar.selectbox("계절", ["여름 (6-8월)", "겨울 (12-2월)", "전체 시즌"])
-temp = st.sidebar.slider("온도 (℃)", -20.0, 40.0, 25.0, 0.1)
-hum = st.sidebar.slider("습도 (%)", 0.0, 100.0, 50.0, 0.1)
-vibe = st.sidebar.slider("기분 (차분함 ↔ 신남)", 0.0, 100.0, 50.0, 0.1)
+# --- 사이드바 설정 패널 ---
+st.sidebar.title("📍 기상 시뮬레이터")
 
+# [추가] 실시간 날씨 검색 기능
+with st.sidebar.expander("🔍 실시간 날씨 불러오기", expanded=True):
+    city = st.text_input("영문 도시명 입력", placeholder="Daejeon")
+    if st.button("날씨 동기화"):
+        if city:
+            api_key = "5c55a17e72f6d32c9e75968bdd7beb19" # 여기에 키 입력
+            w_url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+            try:
+                res = requests.get(w_url).json()
+                if res.get("cod") == 200:
+                    # 세션 상태에 날씨 저장 (슬라이더 값 변경)
+                    st.session_state['temp'] = float(res['main']['temp'])
+                    st.session_state['hum'] = float(res['main']['humidity'])
+                    st.success(f"{city} 날씨 적용 완료!")
+                else:
+                    st.error("도시를 찾을 수 없습니다.")
+            except:
+                st.error("연결 오류 발생")
+        else:
+            st.warning("도시 이름을 입력하세요.")
+
+# 슬라이더 (세션 상태와 연동)
+if 'temp' not in st.session_state: st.session_state['temp'] = 25.0
+if 'hum' not in st.session_state: st.session_state['hum'] = 50.0
+
+season = st.sidebar.selectbox("계절 설정", ["여름 (6-8월)", "겨울 (12-2월)", "전체 시즌"])
+temp = st.sidebar.slider("온도 (℃)", -20.0, 40.0, st.session_state['temp'], 0.1)
+hum = st.sidebar.slider("습도 (%)", 0.0, 100.0, st.session_state['hum'], 0.1)
+vibe = st.sidebar.slider("나의 기분 (차분함 ↔ 신남)", 0.0, 100.0, 50.0, 0.1)
+
+# --- 메인 화면 ---
 st.title("🎧 Weather Playlist v4.0")
-st.write("당신의 현재 기상 조건과 감성을 분석해 최적의 음악을 추천합니다.")
+st.write("기상 조건과 감성을 분석해 최적의 음악 30곡을 추천합니다.")
 
-if st.button("🚀 나만의 플레이리스트 생성하기"):
-    # 알고리즘 계산
+if st.button("🚀 분석 및 플레이리스트 생성"):
+    # 알고리즘 계산 (기존과 동일)
     t_e = ((temp + 20.0) * 1.5 * 0.6) + (vibe * 0.4)
     t_v = ((100.0 - hum * 0.8) * 0.6) + (vibe * 0.4)
     
-    # 데이터 필터링
     if "여름" in season: candidates = df[df['released_month'].isin([6, 7, 8])]
     elif "겨울" in season: candidates = df[df['released_month'].isin([12, 1, 2])]
     else: candidates = df
@@ -48,9 +74,8 @@ if st.button("🚀 나만의 플레이리스트 생성하기"):
     candidates['score'] = (candidates['energy_%'] - t_e).abs() + (candidates['valence_%'] - t_v).abs()
     results = candidates.sort_values(by='score').head(30)
     
-    st.info(f"분석 결과: 에너지 {t_e:.1f}% | 밝기 {t_v:.1f}%를 목표로 추천합니다.")
+    st.info(f"분석 완료: 온도 {temp}도, 습도 {hum}% 기준 (목표 에너지: {t_e:.1f}%)")
     
-    # 결과 출력 (30곡)
     for i, (idx, row) in enumerate(results.iterrows()):
         url = f"https://open.spotify.com/search/{row['track_name'].replace(' ', '%20')}"
         st.markdown(f"""
