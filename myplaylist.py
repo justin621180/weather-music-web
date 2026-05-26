@@ -5,7 +5,7 @@ import requests
 # 1. 페이지 설정
 st.set_page_config(page_title="Weather Playlist", page_icon="🎧", layout="wide")
 
-# 2. 다크 테마 커스텀 디자인 (디자인 업그레이드)
+# 2. 디자인 테마 (스포티파이 스타일)
 st.markdown("""
     <style>
     .main { background-color: #121212; color: white; }
@@ -39,8 +39,6 @@ st.markdown("""
         font-size: 13px;
         flex: 1; text-align: center;
     }
-    .play-btn:hover { background-color: #1ed760; }
-    .yt-btn:hover { background-color: #cc0000; }
     .market-tag {
         background-color: #333;
         color: #1DB954;
@@ -52,27 +50,44 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. 데이터 로드 및 차트 확장 로직
+# 3. 데이터 로드 및 [글자 깨짐 방지 전처리]
 @st.cache_data
 def load_data():
-    df = pd.read_csv('spotify-2023.csv', encoding='latin-1')
-    df.columns = [c.strip() for c in df.columns]
-    df['streams'] = pd.to_numeric(df['streams'], errors='coerce')
-    # 한국 노래 비중을 높이기 위해 장르/아티스트 태그 임의 생성 (시뮬레이션용)
-    return df
+    try:
+        # 다양한 인코딩 시도 및 오류 무시 설정
+        df = pd.read_csv('spotify-2023.csv', encoding='latin-1')
+        
+        # [핵심]: 깨진 문자열 정제 알고리즘
+        def clean_text(text):
+            if isinstance(text, str):
+                # 깨진 라틴 문자를 정상적인 UTF-8로 변환 시도
+                try:
+                    return text.encode('latin-1').decode('utf-8')
+                except:
+                    # 변환 실패 시 알 수 없는 문자 제거
+                    return text.encode('ascii', 'ignore').decode('ascii')
+            return text
+
+        # 모든 텍스트 컬럼에 정제 함수 적용
+        df['track_name'] = df['track_name'].apply(clean_text)
+        df['artist(s)_name'] = df['artist(s)_name'].apply(clean_text)
+        
+        df.columns = [c.strip() for c in df.columns]
+        df['streams'] = pd.to_numeric(df['streams'], errors='coerce')
+        return df
+    except:
+        st.error("데이터 파일을 읽는 중 인코딩 오류가 발생했습니다.")
+        return None
 
 df = load_data()
 
 # 4. 사이드바 제어 패널
-st.sidebar.title("📍 Weather Playlist 제어판")
-
-# [핵심 추가]: 국가별 차트 선택 기능
+st.sidebar.title("📍 Weather Playlist Control")
 st.sidebar.subheader("🌍 분석 차트 선택")
-market = st.sidebar.selectbox("대상 국가 (National Chart)", 
-                             ["Global Top Hits", "South Korea (K-Pop Focus)", "USA Top 50", "Japan City Pop"])
+market = st.sidebar.selectbox("대상 국가", ["Global Top Hits", "South Korea (K-Pop)", "USA Top 50", "Japan City Pop"])
 
 # 실시간 날씨 데이터 연동
-with st.sidebar.expander("🔍 실시간 날씨 데이터 불러오기", expanded=True):
+with st.sidebar.expander("🔍 실시간 날씨 연동", expanded=True):
     city_input = st.text_input("영문 도시명 (예: Seoul)", placeholder="Seoul")
     if st.button("날씨 데이터 동기화"):
         if city_input:
@@ -83,33 +98,29 @@ with st.sidebar.expander("🔍 실시간 날씨 데이터 불러오기", expande
                 if res.get("cod") == 200:
                     st.session_state['temp'] = float(res['main']['temp'])
                     st.session_state['hum'] = float(res['main']['humidity'])
-                    st.success(f"{city_input} 데이터 동기화 완료!")
+                    st.success(f"{city_input} 날씨 연동 성공!")
                 else: st.error("도시를 찾을 수 없습니다.")
-            except: st.error("API 연결 실패")
+            except: st.error("연결 실패")
 
 if 'temp' not in st.session_state: st.session_state['temp'] = 22.0
 if 'hum' not in st.session_state: st.session_state['hum'] = 50.0
 
 # 정밀 조절 섹션
 season = st.sidebar.selectbox("분석 계절 설정", ["봄 (3-5월)", "여름 (6-8월)", "가을 (9-11월)", "겨울 (12-2월)", "전체 시즌"])
-temp = st.sidebar.slider("정밀 온도 조절 (℃)", -20.0, 40.0, st.session_state['temp'], 0.1)
-hum = st.sidebar.slider("정밀 습도 조절 (%)", 0.0, 100.0, st.session_state['hum'], 0.1)
-vibe = st.sidebar.slider("현재 나의 기분 (0:차분함 ↔ 100:신남)", 0.0, 100.0, 50.0, 0.1)
+temp = st.sidebar.slider("온도 (℃)", -20.0, 40.0, st.session_state['temp'], 0.1)
+hum = st.sidebar.slider("습도 (%)", 0.0, 100.0, st.session_state['hum'], 0.1)
+vibe = st.sidebar.slider("나의 기분 (0:차분함 ↔ 100:신남)", 0.0, 100.0, 50.0, 0.1)
 
 # 5. 메인 화면 출력
-st.title("🎧 Weather Playlist v7.0")
-st.write(f"지금 **{market}** 차트 데이터를 분석하여 당신의 환경에 가장 완벽한 30곡을 큐레이션합니다.")
+st.title("🎧 Weather Playlist v7.1")
+st.write(f"현재 **{market}** 데이터를 기반으로 분석 중입니다.")
 
-if st.button("🚀 나만의 국가별 맞춤 플레이리스트 생성"):
-    # 가중치 알고리즘
+if st.button("🚀 나만의 플레이리스트 생성 및 새로고침"):
     t_e = ((temp + 20.0) * 1.5 * 0.6) + (vibe * 0.4)
     t_v = ((100.0 - hum * 0.8) * 0.6) + (vibe * 0.4)
     
-    # [차트 확장 필터링 로직]
-    # 실제 구현 시 각 국가별 CSV 파일을 별도로 로드하거나 필터링함
     if "South Korea" in market:
-        # 한국 노래 데이터를 시뮬레이션하기 위해 특정 아티스트(NewJeans, BTS 등) 비중 상향
-        candidates = df[df['released_month'].isin([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])]
+        candidates = df.copy() # 실제로는 한국 데이터셋 사용
     else:
         if "봄" in season: candidates = df[df['released_month'].isin([3, 4, 5])]
         elif "여름" in season: candidates = df[df['released_month'].isin([6, 7, 8])]
@@ -119,16 +130,16 @@ if st.button("🚀 나만의 국가별 맞춤 플레이리스트 생성"):
     
     candidates = candidates.copy()
     candidates['score'] = (candidates['energy_%'] - t_e).abs() + (candidates['valence_%'] - t_v).abs()
-    
-    # 지능형 새로고침 (Top-100 중 30곡 샘플링)
     results = candidates.sort_values(by='score').head(100).sample(30)
     
-    st.success(f"✅ 분석 완료! [{market}] 기반 최적화 리스트입니다.")
+    st.info(f"✅ 분석 완료! 온도 {temp}℃, 습도 {hum}% 최적화 결과입니다.")
 
     for i, (idx, row) in enumerate(results.iterrows()):
         track, artist = row['track_name'], row['artist(s)_name']
         play_url = f"https://open.spotify.com/search/{track} {artist}"
-        yt_url = f"https://www.youtube.com/results?search_query={track} {artist} official audio"
+        yt_query = f"{track} {artist} official audio".replace(" ", "+")
+        yt_url = f"https://www.youtube.com/results?search_query={yt_query}"
+        
         mood_text = "밝고 경쾌한" if row['valence_%'] > 60 else "차분하고 서정적인"
         
         st.markdown(f"""
@@ -144,8 +155,8 @@ if st.button("🚀 나만의 국가별 맞춤 플레이리스트 생성"):
                     </div>
                     <div style="width: 280px; text-align: right;">
                         <div class="btn-container">
-                            <a href="{play_url}" target="_blank" class="play-btn">▶ Spotify 감상</a>
-                            <a href="{yt_url}" target="_blank" class="yt-btn">📺 유튜브 바로듣기</a>
+                            <a href="{play_url}" target="_blank" class="play-btn">▶ Spotify</a>
+                            <a href="{yt_url}" target="_blank" class="yt-btn">📺 YouTube</a>
                         </div>
                         <p style="color: #b3b3b3; font-size: 11px; margin-top: 15px;">
                             BPM: {row['bpm']} | Streams: {int(row['streams']):,}
