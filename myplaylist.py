@@ -40,8 +40,8 @@ st.markdown("""
 # ---------------------------------------------------------
 # 3. 스포티파이 API 설정 (본인의 정보를 입력하세요)
 # ---------------------------------------------------------
-CLIENT_ID = "여러분의_CLIENT_ID"
-CLIENT_SECRET = "여러분의_CLIENT_SECRET"
+CLIENT_ID = "823102be1731465f88b1170f8f063b4f"
+CLIENT_SECRET = "e636555833ce4f2098627d3e6415434b"
 
 @st.cache_resource
 def get_spotify_conn():
