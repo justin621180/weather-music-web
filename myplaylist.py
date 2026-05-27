@@ -78,7 +78,6 @@ def safe_text(text):
     return unicodedata.normalize('NFC', text)
 
 def get_live_chart(playlist_id):
-    """Spotify API를 통한 실시간 차트 데이터 수집"""
     if sp is None: return pd.DataFrame()
     try:
         results = sp.playlist_tracks(playlist_id)
@@ -92,6 +91,19 @@ def get_live_chart(playlist_id):
                     'id': t['id']
                 })
         
+        ids = [t['id'] for t in tracks]
+        features = sp.audio_features(ids)
+        for i, f in enumerate(features):
+            if f:
+                tracks[i]['energy_%'] = f['energy'] * 100
+                tracks[i]['valence_%'] = f['valence'] * 100
+                tracks[i]['bpm'] = f['tempo']
+            else:
+                tracks[i]['energy_%'], tracks[i]['valence_%'], tracks[i]['bpm'] = 50, 50, 120
+        return pd.DataFrame(tracks)
+    except Exception as e:
+        st.sidebar.error(f"실시간 데이터 수집 실패: {e}")
+        return pd.DataFrame()
         # 오디오 피처(Energy, Valence 등) 실시간 수집
         ids = [t['id'] for t in tracks]
         features = sp.audio_features(ids)
