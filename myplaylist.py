@@ -52,10 +52,14 @@ CLIENT_SECRET = "e636555833ce4f2098627d3e6415434b"
 
 @st.cache_resource
 def get_spotify_conn():
+    if CLIENT_ID == "823102be1731465f88b1170f8f063b4f": # 수정 안 했을 때 경고
+        st.error("⚠️ 코드 상단의 CLIENT_ID를 실제 키로 바꿔주세요!")
+        return None
     try:
         auth_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
         return spotipy.Spotify(auth_manager=auth_manager)
-    except:
+    except Exception as e:
+        st.error(f"⚠️ 스포티파이 인증 오류: {e}") # 진짜 에러 메시지 출력
         return None
 
 sp = get_spotify_conn()
