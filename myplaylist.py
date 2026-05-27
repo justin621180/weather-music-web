@@ -52,7 +52,7 @@ CLIENT_SECRET = "e636555833ce4f2098627d3e6415434b"
 
 @st.cache_resource
 def get_spotify_conn():
-    if CLIENT_ID == "823102be1731465f88b1170f8f063b4f": # 수정 안 했을 때 경고
+    if CLIENT_ID == "여러분의_CLIENT_ID": # 수정 안 했을 때 경고
         st.error("⚠️ 코드 상단의 CLIENT_ID를 실제 키로 바꿔주세요!")
         return None
     try:
